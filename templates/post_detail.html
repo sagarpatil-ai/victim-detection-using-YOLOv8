@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Post - DisasterSight</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: Inter, sans-serif;
+        background: #f8fafc;
+        color: #0f172a;
+        margin: 0;
+      }
+      .wrap {
+        max-width: 900px;
+        margin: 24px auto;
+        padding: 20px;
+      }
+      .card {
+        background: #fff;
+        border: 1px solid #eef4f8;
+        border-radius: 10px;
+        padding: 16px;
+      }
+      .meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .small {
+        color: #64748b;
+        font-size: 0.9rem;
+      }
+      textarea {
+        width: 100%;
+        min-height: 80px;
+        padding: 8px;
+        border-radius: 8px;
+        border: 1px solid #e6edf3;
+      }
+      button {
+        background: #dc2626;
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 0;
+        cursor: pointer;
+      }
+      img.post-image {
+        max-width: 420px;
+        margin-top: 8px;
+        border-radius: 8px;
+      }
+      .comment {
+        border-top: 1px solid #f1f5f9;
+        padding: 10px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <a href="{{ url_for('community') }}">← Back to Community</a>
+      <div class="card" style="margin-top: 12px">
+        <div class="meta">
+          <div>
+            <div style="font-weight: 700">{{ post['username'] }}</div>
+            <div class="small">{{ post['title'] or '—' }}</div>
+          </div>
+          <div class="small">{{ post['created_at'] }}</div>
+        </div>
+
+        <div style="margin-top: 12px">
+          <div>{{ post['body'] }}</div>
+          {% if post['image_path'] %}
+          <div>
+            <img
+              class="post-image"
+              src="/{{ post['image_path'] }}"
+              alt="post image"
+            />
+          </div>
+          {% endif %} {% if post['latitude'] and post['longitude'] %}
+          <div class="small" style="margin-top: 8px">
+            Location: {{ post['latitude'] }}, {{ post['longitude'] }}
+          </div>
+          {% endif %}
+        </div>
+
+        <hr style="margin: 14px 0; border-top: 1px solid #f1f5f9" />
+        <h3>Comments</h3>
+
+        <form method="post">
+          <textarea
+            name="comment"
+            placeholder="Write a comment..."
+            required
+          ></textarea>
+          <div style="margin-top: 8px">
+            <button type="submit">Add Comment</button>
+          </div>
+        </form>
+
+        <div style="margin-top: 12px">
+          {% if comments %} {% for c in comments %}
+          <div class="comment">
+            <div style="font-weight: 700">{{ c['username'] }}</div>
+            <div class="small">{{ c['created_at'] }}</div>
+            <div style="margin-top: 6px">{{ c['body'] }}</div>
+          </div>
+          {% endfor %} {% else %}
+          <div class="small">No comments yet.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DisasterSight Rescue Assistant</title>
+
+    <!-- Google Fonts -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <!-- PWA -->
+    <link
+      rel="manifest"
+      href="{{ url_for('static', filename='manifest.json') }}"
+    />
+    <meta name="theme-color" content="#dc2626" />
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register('{{ url_for("static", filename="sw.js") }}')
+            .then(() =>
+              console.log("✅ Service Worker registered successfully")
+            )
+            .catch((err) =>
+              console.log("❌ Service Worker registration failed:", err)
+            );
+        });
+      }
+    </script>
+
+    <style>
+      :root {
+        --brand: #dc2626;
+        --bg: #f8fafc;
+        --ink: #0f172a;
+        --muted: #64748b;
+        --card: #ffffff;
+        --border: #e5e7eb;
+        --em: #ef4444;
+        --help: #f59e0b;
+        --low: #10b981;
+        --chip-bg: #f1f5f9;
+        --chip-ink: #0f172a;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: "Inter", sans-serif;
+      }
+      body {
+        background: var(--bg);
+        color: var(--ink);
+      }
+      header {
+        background: var(--brand);
+        color: #fff;
+        padding: 1.25rem 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 700;
+      }
+      nav a {
+        color: #fff;
+        text-decoration: none;
+        margin-left: 1.5rem;
+        font-weight: 600;
+      }
+      nav a:hover {
+        opacity: 0.9;
+      }
+      main {
+        max-width: 1200px;
+        margin: 2rem auto;
+        padding: 0 2rem;
+      }
+      h1,
+      h2,
+      h3 {
+        margin-bottom: 1rem;
+        font-weight: 700;
+      }
+      .section {
+        margin-bottom: 3rem;
+      }
+      .cards {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+      }
+      .card {
+        background: var(--card);
+        padding: 1rem;
+        border-radius: 12px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+        flex: 1 1 300px;
+      }
+
+      .upload-box {
+        border: 2px dashed var(--brand);
+        border-radius: 12px;
+        padding: 2rem;
+        text-align: center;
+        margin-bottom: 1rem;
+        background: #fff;
+      }
+      input[type="file"] {
+        display: none;
+      }
+      .upload-form {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+      }
+      .upload-box label {
+        border: 1px solid var(--brand);
+        padding: 0.6rem 1rem;
+        border-radius: 10px;
+        background: #fff;
+        color: var(--brand);
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .upload-box label:hover {
+        background: #fee2e2;
+      }
+
+      .tabs {
+        display: flex;
+        border-radius: 10px;
+        overflow: hidden;
+        margin-bottom: 1rem;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+      }
+      .tab {
+        flex: 1;
+        padding: 0.6rem;
+        text-align: center;
+        cursor: pointer;
+        font-weight: 600;
+        color: #475569;
+      }
+      .tab.active {
+        background: #fff;
+        border-bottom: 2px solid var(--brand);
+        color: var(--brand);
+      }
+      .detection-box {
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        height: 340px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #64748b;
+        background: #f8fafc;
+      }
+      .detection-box img {
+        max-width: 100%;
+        max-height: 100%;
+        border-radius: 10px;
+      }
+
+      .stats {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin: 0.75rem 0 1rem 0;
+      }
+      .stat {
+        flex: 1 1 180px;
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 0.9rem 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+      }
+      .dot.em {
+        background: var(--em);
+      }
+      .dot.help {
+        background: var(--help);
+      }
+      .dot.low {
+        background: var(--low);
+      }
+      .stat .value {
+        font-size: 1.4rem;
+        font-weight: 800;
+      }
+      .stat small {
+        color: var(--muted);
+      }
+
+      .results-section {
+        margin-top: 2rem;
+        background: #fff5f5;
+        padding: 1.25rem;
+        border: 1px solid #fecaca;
+        border-radius: 14px;
+      }
+      .result-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        max-height: 460px;
+        overflow-y: auto;
+        padding-right: 0.4rem;
+      }
+      .result-card {
+        position: relative;
+        border: 1px solid var(--border);
+        background: #f8fafc;
+        border-radius: 14px;
+        padding: 1rem 1rem 0.8rem 1rem;
+      }
+      .rail {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 6px;
+        border-top-left-radius: 14px;
+        border-bottom-left-radius: 14px;
+      }
+      .rail.em {
+        background: var(--em);
+      }
+      .rail.help {
+        background: var(--help);
+      }
+      .rail.low {
+        background: var(--low);
+      }
+
+      .result-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .victim-id {
+        font-weight: 800;
+        color: var(--brand);
+        margin-bottom: 0.25rem;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 0.25rem 0.6rem;
+        font-weight: 700;
+        font-size: 0.82rem;
+      }
+      .pill.em {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+      }
+      .pill.help {
+        background: #fff7ed;
+        color: #9a3412;
+        border: 1px solid #fed7aa;
+      }
+      .pill.low {
+        background: #ecfdf5;
+        color: #065f46;
+        border: 1px solid #a7f3d0;
+      }
+
+      .badges {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin: 0.5rem 0;
+      }
+      .chip {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        color: #0f172a;
+        border-radius: 999px;
+        padding: 0.25rem 0.6rem;
+        font-size: 0.82rem;
+        font-weight: 600;
+      }
+
+      .bar {
+        height: 8px;
+        border-radius: 999px;
+        background: #e5e7eb;
+        overflow: hidden;
+      }
+      .bar > span {
+        display: block;
+        height: 100%;
+      }
+      .bar.conf > span {
+        background: #6366f1;
+      }
+      .bar.burial > span {
+        background: #fb7185;
+      }
+
+      .meta {
+        margin-top: 0.5rem;
+        color: #64748b;
+        font-size: 0.88rem;
+      }
+      .btn {
+        border: 1px solid var(--brand);
+        background: #fff;
+        color: var(--brand);
+        font-weight: 700;
+        padding: 0.35rem 0.75rem;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+      .btn:hover {
+        background: #fee2e2;
+      }
+
+      .fetch-location-btn {
+        border: 1px solid var(--brand);
+        background: #fff;
+        color: var(--brand);
+        font-weight: 700;
+        padding: 0.6rem 1rem;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+      .fetch-location-btn:hover {
+        background: #fee2e2;
+      }
+      #victimMap {
+        height: 400px;
+        width: 100%;
+        margin-top: 1rem;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+      }
+
+      /* small screens */
+      @media (max-width: 780px) {
+        .cards {
+          flex-direction: column;
+        }
+        .stat {
+          flex: 1 1 100%;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <div style="display: flex; align-items: center; gap: 16px">
+        <div style="font-weight: 800; color: #fff">
+          ⚠ DisasterSight Rescue Assistant
+        </div>
+        <nav>
+          <a href="{{ url_for('index') }}">Detection</a>
+          <a href="{{ url_for('community') }}">Community</a>
+          <a href="#">About</a>
+        </nav>
+      </div>
+
+      <div>
+        {% if session.get('username') %}
+        <span style="color: #fff; margin-right: 10px"
+          >Signed in as <strong>{{ session.username }}</strong></span
+        >
+        <a
+          href="{{ url_for('logout') }}"
+          style="color: #fff; margin-left: 8px; text-decoration: none"
+          >Logout</a
+        >
+        {% else %}
+        <a
+          href="{{ url_for('login') }}"
+          style="color: #fff; text-decoration: none; margin-left: 8px"
+          >Login</a
+        >
+        {% endif %}
+      </div>
+    </header>
+
+    <main>
+      <section class="section">
+        <h1>About DisasterSight</h1>
+        <p>
+          Enhanced victim detection using YOLOv8 (boxes) and YOLOv8-Pose
+          (keypoints), with depth perception for context.
+        </p>
+        <div class="cards">
+          <div class="card">
+            <div class="icon-title">⚠ Project Overview</div>
+            <p>
+              DisasterSight is designed to enhance search and rescue operations
+              by utilizing artificial intelligence for victim detection and
+              priority estimation.
+            </p>
+          </div>
+          <div class="card">
+            <div class="icon-title">⚠ Technology Stack</div>
+            <ul>
+              <li><strong>YOLOv8</strong> — Object detection (boxes)</li>
+              <li><strong>YOLOv8-Pose</strong> — Pose keypoints (skeleton)</li>
+              <li><strong>DepthAnythingV2</strong> — Depth estimation</li>
+              <li><strong>Web-based Interface</strong></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h1>Disaster Victim Detection</h1>
+        <div class="cards">
+          <div class="card">
+            <h3>Upload Disaster Scene</h3>
+            <div class="upload-box">
+              <form
+                class="upload-form"
+                action="/"
+                method="POST"
+                enctype="multipart/form-data"
+              >
+                <input
+                  type="file"
+                  name="file"
+                  id="fileInput"
+                  accept="image/png, image/jpeg"
+                  onchange="this.form.submit()"
+                  required
+                />
+                <label for="fileInput">📤 Select Image</label>
+              </form>
+            </div>
+            <small>Supported formats: JPEG, PNG</small>
+          </div>
+
+          <div class="card" style="flex: 2">
+            <div class="tabs">
+              <div class="tab active" id="tab-detect">Detection (Boxes)</div>
+              <div class="tab" id="tab-pose">Pose (Skeleton)</div>
+              <div class="tab" id="tab-depth">Depth Map</div>
+            </div>
+            <h3>Analysis</h3>
+            <div class="detection-box">
+              <img
+                id="mainView"
+                src=""
+                alt="Analysis Result"
+                style="display: none"
+              />
+              <span id="uploadPlaceholder"
+                >Upload an image to view analysis results</span
+              >
+            </div>
+          </div>
+        </div>
+
+        {% if victim_info %}
+        <div class="results-section">
+          <h3 style="font-size: 1.6rem">Detection Results</h3>
+          <p style="color: #64748b; margin-bottom: 0.5rem">
+            Found {{ total_count }} potential victim{{ 's' if total_count > 1 }}
+          </p>
+
+          <div class="stats" aria-hidden="false">
+            <div class="stat">
+              <span class="dot em" aria-hidden="true"></span>
+              <div>
+                <div class="value">{{ emergency_count }}</div>
+                <small>Emergency</small>
+              </div>
+            </div>
+            <div class="stat">
+              <span class="dot help" aria-hidden="true"></span>
+              <div>
+                <div class="value">{{ need_help_count }}</div>
+                <small>Need Help</small>
+              </div>
+            </div>
+            <div class="stat">
+              <span class="dot low" aria-hidden="true"></span>
+              <div>
+                <div class="value">{{ low_priority_count }}</div>
+                <small>Low Priority</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="result-list" role="list">
+            {% for v in victim_info %} {% set rail = 'em' if
+            v.priority=='Emergency' else ('help' if v.priority=='Need Help' else
+            'low') %}
+            <div class="result-card" role="listitem">
+              <div class="rail {{ rail }}"></div>
+
+              <div class="result-head">
+                <div>
+                  <div class="victim-id">Victim {{ v.id }}</div>
+                  <div class="badges">
+                    <span class="pill {{ rail }}">{{ v.priority }}</span>
+                    <span class="chip"
+                      >Risk: <strong>{{ v.risk }}</strong></span
+                    >
+                    <span class="chip"
+                      >Distance: <strong>{{ v.distance_m }} m</strong></span
+                    >
+                    <span class="chip"
+                      >Confidence: <strong>{{ v.confidence }}%</strong></span
+                    >
+                  </div>
+                </div>
+                <button
+                  class="btn"
+                  onclick="alert(
+                  'Victim {{ v.id }}\\n' +
+                  'Priority: {{ v.priority }}\\n' +
+                  'Risk: {{ v.risk }}\\n' +
+                  'Confidence: {{ v.confidence }}%\\n' +
+                  'Distance: {{ v.distance_m }} m\\n' +
+                  'Lower burial: {{ (v.lower_cov*100)|round(0) }}%\\n' +
+                  'Upper burial: {{ (v.upper_cov*100)|round(0) }}%\\n' +
+                  'Airway score: {{ (v.airway*100)|round(0) }}%\\n' +
+                  'Pinning: {{ v.contact_pin }}\\n' +
+                  'Depth Δ: {{ v.depth_delta }}'
+                )"
+                >
+                  Details
+                </button>
+              </div>
+
+              <div class="badges" style="margin-top: 0.25rem">
+                <span class="chip"
+                  >Lower burial:
+                  <strong>{{ (v.lower_cov*100)|round(0) }}%</strong></span
+                >
+                <span class="chip"
+                  >Upper burial:
+                  <strong>{{ (v.upper_cov*100)|round(0) }}%</strong></span
+                >
+                <span class="chip"
+                  >Airway: <strong>{{ (v.airway*100)|round(0) }}%</strong></span
+                >
+                <span class="chip"
+                  >Pinning: <strong>{{ v.contact_pin }}</strong></span
+                >
+                <span class="chip"
+                  >Depth Δ: <strong>{{ v.depth_delta }}</strong></span
+                >
+              </div>
+
+              <div
+                style="
+                  display: grid;
+                  grid-template-columns: 120px 1fr;
+                  gap: 0.6rem;
+                  align-items: center;
+                  margin: 0.8rem 0 0.4rem 0;
+                "
+              >
+                <span style="color: #475569; font-weight: 700">Confidence</span>
+                <div class="bar conf" aria-hidden="true">
+                  <span style="width: {{ v.confidence }}%"></span>
+                </div>
+
+                <span style="color: #475569; font-weight: 700"
+                  >Burial (lower)</span
+                >
+                <div class="bar burial" aria-hidden="true">
+                  <span
+                    style="width: {{ (v.lower_cov*100) | round(0) }}%"
+                  ></span>
+                </div>
+              </div>
+
+              <div class="meta">
+                Depth cues (burial/airway/pinning) and pose are fused into a
+                single risk score.
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+      </section>
+
+      <section class="section">
+        <button class="fetch-location-btn" onclick="fetchLocation()">
+          📍 Fetch Live Location
+        </button>
+      </section>
+
+      <section class="section">
+        <h3>Victim Locations on Map</h3>
+        <div id="victimMap"></div>
+      </section>
+    </main>
+
+    <script>
+      // Image paths
+      var resultImg = "{{ url_for('static', filename=result_img) if result_img else '' }}";
+      var poseImg   = "{{ url_for('static', filename=pose_img) if pose_img else '' }}";
+      var depthImg  = "{{ url_for('static', filename=depth_img) if depth_img else '' }}";
+
+      const mainView = document.getElementById("mainView");
+      const uploadPlaceholder = document.getElementById("uploadPlaceholder");
+
+      if (resultImg) { mainView.src = resultImg; mainView.style.display = "block"; uploadPlaceholder.style.display = "none"; }
+
+      const tabDetect = document.getElementById("tab-detect");
+      const tabPose   = document.getElementById("tab-pose");
+      const tabDepth  = document.getElementById("tab-depth");
+
+      function activateTab(activeEl, others) {
+        activeEl.classList.add("active");
+        others.forEach(el => el.classList.remove("active"));
+      }
+
+      tabDetect && tabDetect.addEventListener("click", () => {
+        activateTab(tabDetect, [tabPose, tabDepth]);
+        if (resultImg) { mainView.src = resultImg; mainView.style.display = "block"; uploadPlaceholder.style.display = "none"; }
+      });
+      tabPose && tabPose.addEventListener("click", () => {
+        activateTab(tabPose, [tabDetect, tabDepth]);
+        if (poseImg) { mainView.src = poseImg; mainView.style.display = "block"; uploadPlaceholder.style.display = "none"; }
+        else alert("Pose result not available.");
+      });
+      tabDepth && tabDepth.addEventListener("click", () => {
+        activateTab(tabDepth, [tabDetect, tabPose]);
+        if (depthImg) { mainView.src = depthImg; mainView.style.display = "block"; uploadPlaceholder.style.display = "none"; }
+        else alert("Depth map not available.");
+      });
+
+      // Map
+      var map = L.map("victimMap").setView([20.5937, 78.9629], 5);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+
+      var victimLocations = {{ victim_locations | tojson | safe }};
+      if (victimLocations && victimLocations.length > 0) {
+        victimLocations.forEach(function (v) {
+          const color = v.priority === 'Emergency' ? 'red' : (v.priority === 'Need Help' ? 'orange' : 'green');
+          L.marker([v.lat, v.lng])
+            .addTo(map)
+            .bindPopup(`<b style="color:${color}">Victim ${v.id} — ${v.priority}</b><br>Confidence: ${v.confidence}%`);
+        });
+      }
+
+      function fetchLocation() {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(function (pos) {
+            var lat = pos.coords.latitude, lng = pos.coords.longitude;
+            map.setView([lat, lng], 13);
+            L.marker([lat, lng]).addTo(map).bindPopup("Your Current Location").openPopup();
+          });
+        } else { alert("Geolocation is not supported by this browser."); }
+      }
+    </script>
+  </body>
+</html>

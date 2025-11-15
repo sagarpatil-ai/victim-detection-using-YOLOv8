@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Rescue Community</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+        margin: 0;
+        background: #f8fafc;
+        color: #0f172a;
+      }
+      header {
+        background: #fff;
+        border-bottom: 1px solid #e6edf3;
+        padding: 12px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      header a {
+        color: #0f172a;
+        text-decoration: none;
+        margin-left: 12px;
+        font-weight: 600;
+      }
+      .container {
+        max-width: 1100px;
+        margin: 28px auto;
+        padding: 0 20px;
+      }
+      .panel {
+        background: #fff;
+        border-radius: 10px;
+        padding: 18px;
+        border: 1px solid #e6edf3;
+        box-shadow: 0 4px 18px rgba(12, 24, 40, 0.03);
+      }
+      h1 {
+        margin: 0 0 12px 0;
+      }
+      .create {
+        display: flex;
+        gap: 12px;
+        flex-direction: column;
+        margin-bottom: 18px;
+      }
+      input[type="text"],
+      textarea {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #e6edf3;
+        border-radius: 8px;
+      }
+      .input-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      button {
+        background: #dc2626;
+        color: #fff;
+        padding: 10px 14px;
+        border-radius: 8px;
+        border: 0;
+        cursor: pointer;
+        font-weight: 700;
+      }
+      .post {
+        border-radius: 10px;
+        padding: 14px;
+        border: 1px solid #eef4f8;
+        margin-bottom: 12px;
+      }
+      .meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .meta .author {
+        font-weight: 700;
+        color: #0f172a;
+      }
+      .meta .time {
+        color: #64748b;
+        font-size: 0.9rem;
+      }
+      .body {
+        color: #0f172a;
+        white-space: pre-wrap;
+      }
+      .comments {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px dashed #eef4f8;
+      }
+      .comment {
+        padding: 8px 0;
+        border-bottom: 1px solid #f1f5f9;
+      }
+      .small {
+        color: #64748b;
+        font-size: 0.9rem;
+      }
+      .btn-link {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        padding: 6px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      img.post-image {
+        max-width: 360px;
+        margin-top: 10px;
+        border-radius: 8px;
+        border: 1px solid #eef4f8;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div style="display: flex; align-items: center; gap: 16px">
+        <div style="font-weight: 800; color: #dc2626">⚠ DisasterSight</div>
+        <nav>
+          <a href="{{ url_for('index') }}">Detection</a>
+          <a href="{{ url_for('community') }}">Community</a>
+        </nav>
+      </div>
+      <div>
+        {% if session.get('username') %}
+        <span class="small"
+          >Signed in as <strong>{{ session.username }}</strong></span
+        >
+        <a href="{{ url_for('logout') }}" style="margin-left: 12px">Logout</a>
+        {% else %}
+        <a href="{{ url_for('login') }}">Login</a>
+        {% endif %}
+      </div>
+    </header>
+
+    <div class="container">
+      <div class="panel">
+        <h1>Rescue Community</h1>
+        <p class="small">
+          Share situational updates, images, and coordinates with team members.
+        </p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %} {% if
+        messages %} {% for cat,msg in messages %}
+        <div style="margin-bottom: 8px; color: #dc2626">{{ msg }}</div>
+        {% endfor %} {% endif %} {% endwith %}
+
+        <form
+          class="create"
+          method="post"
+          action="{{ url_for('community') }}"
+          enctype="multipart/form-data"
+        >
+          <input
+            type="text"
+            name="title"
+            placeholder="Short title (optional)"
+          />
+          <textarea
+            name="body"
+            rows="4"
+            placeholder="Describe the situation, location, urgency..."
+          ></textarea>
+
+          <div class="input-row">
+            <input type="file" name="image" accept="image/*" />
+            <input
+              type="text"
+              name="latitude"
+              id="latitude"
+              placeholder="Latitude"
+              style="flex: 1"
+            />
+            <input
+              type="text"
+              name="longitude"
+              id="longitude"
+              placeholder="Longitude"
+              style="flex: 1"
+            />
+            <button type="button" class="btn-link" onclick="getLocation()">
+              📍 Fetch Location
+            </button>
+          </div>
+
+          <div style="display: flex; gap: 10px; margin-top: 8px">
+            <button type="submit">Create Post</button>
+            <a class="btn-link" href="{{ url_for('index') }}"
+              >Back to Detection</a
+            >
+          </div>
+        </form>
+
+        <hr
+          style="border: none; margin: 12px 0; border-top: 1px solid #f1f5f9"
+        />
+
+        {% if posts %} {% for p in posts %}
+        <div class="post">
+          <div class="meta">
+            <div>
+              <div class="author">{{ p['username'] }}</div>
+              <div class="small">{{ p['title'] or '—' }}</div>
+            </div>
+            <div class="time">{{ p['created_at'] }}</div>
+          </div>
+          <div class="body">{{ p['body'] }}</div>
+          {% if p['image_path'] %}
+          <div>
+            <img
+              class="post-image"
+              src="/{{ p['image_path'] }}"
+              alt="post image"
+            />
+          </div>
+          {% endif %} {% if p['latitude'] and p['longitude'] %}
+          <div class="small" style="margin-top: 8px">
+            Location: {{ p['latitude'] }}, {{ p['longitude'] }}
+          </div>
+          {% endif %}
+          <div style="margin-top: 10px">
+            <a
+              href="{{ url_for('post_detail', post_id=p['id']) }}"
+              class="btn-link"
+              >View / Comment</a
+            >
+          </div>
+        </div>
+        {% endfor %} {% else %}
+        <p class="small">No posts yet — create the first update!</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <script>
+      function getLocation() {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            function (pos) {
+              document.getElementById("latitude").value = pos.coords.latitude;
+              document.getElementById("longitude").value = pos.coords.longitude;
+            },
+            function (err) {
+              alert("Could not fetch location: " + err.message);
+            }
+          );
+        } else {
+          alert("Geolocation not supported by browser.");
+        }
+      }
+    </script>
+  </body>
+</html>
